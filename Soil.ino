@@ -8,12 +8,11 @@ const int dry = 645;
 const int wet = 273;
 const char* webhookUrl = "https://chat.googleapis.com/v1/spaces/AAAA-rlSoZ4/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=sldHI4qyra9fV1DtL_RJUlL5VMRGQ15E3kIfbYc33n4";
 const char* testWebhookUrl = "https://chat.googleapis.com/v1/spaces/AAAA0XqLY3c/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=Vuxxm21ZhPYxhXvPD8SkYSTkLnK74sbcXqqGNo-NJPs";
-const char* weatherApiUrl = "http://api.openweathermap.org/data/2.5/forecast?lat=26.9298&lon=-82.0454&appid=fdc168625df716de0f81572b81cbcede"; // Punta Gorda's Geo coords are [26.9298, -82.0454]
+const char* weatherApiUrl = "http://api.openweathermap.org/data/2.5/forecast?lat=26.9298&lon=-82.0454&appid=fdc168625df716de0f81572b81cbcede"; // Punta Gorda's Geo coords are [26.9298, -82.0454], lat=26.9298&lon=-82.0454
 const char* ssid = "CenturyLink0C01";
 const char* password = "6442bcace3bf98";
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
-
 
 void setup() {
   // put your setup code here, to run once:
@@ -53,10 +52,10 @@ void loop() {
     // send Soil Data to Google Chat
     sendSoilDatatToGoogleChat(percentage);
     // send Rain and Wind Data to Google Chat
-    float rainData = getRainDataFromAPI();
-    sendRainDataToGoogleChat(rainData);
     float windData = getWindSpeedFromAPI();
     sendWindDataToGoogleChat(windData);
+    float rainData = getRainDataFromAPI();
+    sendRainDataToGoogleChat(rainData);
     
     //  print out value and percentage
     Serial.print(rawValue);
@@ -66,17 +65,17 @@ void loop() {
     
 
   }
-  // delay 1 day
-  delay(86400000);
+  // delay 3 hours
+  delay(10800000);
 }
 
 void sendSoilDatatToGoogleChat(int value)
 {
-  // initial http client
+  // // initial http client
   HTTPClient http;
   WiFiClientSecure client;
   client.setInsecure();
-  http.begin(client, testWebhookUrl);
+  http.begin(client, webhookUrl);
   // add http header
   http.addHeader("Content-Type", "application/json");
   
@@ -124,10 +123,10 @@ void sendRainDataToGoogleChat(float rainData) {
   WiFiClientSecure client;
   client.setInsecure();
 
-  http.begin(client, testWebhookUrl);
+  http.begin(client, webhookUrl);
   http.addHeader("Content-Type", "application/json");
 
-  String message = "{\"text\": \"Rain data: " + String(rainData) + " \"}";
+  String message = "{\"text\": \"Rain amount in last three hours is " + String(rainData) + " mm\"}";
   http.POST(message);
 
   Serial.println("Rain data sent.");
@@ -147,10 +146,10 @@ void sendWindDataToGoogleChat(float windData){
   HTTPClient http;
   WiFiClientSecure client;
   client.setInsecure();
-  http.begin(client, testWebhookUrl);
+  http.begin(client, webhookUrl);
   http.addHeader("Content-Type", "application/json");
 
-  String message = "{\"text\": \"Wind data: " + String(windData) + "\"}";
+  String message = "{\"text\": \"Wind speed is " + String(windData) + " meter/sec\"}";
 
   http.POST(message);
   Serial.println("Wind data sent.");
