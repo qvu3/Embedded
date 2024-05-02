@@ -8,9 +8,12 @@ const int dry = 645;
 const int wet = 273;
 const char* webhookUrl = "https://chat.googleapis.com/v1/spaces/AAAA-rlSoZ4/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=sldHI4qyra9fV1DtL_RJUlL5VMRGQ15E3kIfbYc33n4";
 const char* testWebhookUrl = "https://chat.googleapis.com/v1/spaces/AAAA0XqLY3c/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=Vuxxm21ZhPYxhXvPD8SkYSTkLnK74sbcXqqGNo-NJPs";
-const char* weatherApiUrl = "http://api.openweathermap.org/data/2.5/forecast?lat=26.9298&lon=-82.0454&appid=fdc168625df716de0f81572b81cbcede"; // Punta Gorda's Geo coords are [26.9298, -82.0454], lat=26.9298&lon=-82.0454
-const char* ssid = "CenturyLink0C01";
-const char* password = "6442bcace3bf98";
+const char* forecastApiUrl = "http://api.openweathermap.org/data/2.5/forecast?lat=26.9298&lon=-82.0454&appid=fdc168625df716de0f81572b81cbcede&units=imperial"; // Punta Gorda's Geo coords are [26.9298, -82.0454], lat=26.9298&lon=-82.0454
+const char* weatherApiUrl = "http://api.openweathermap.org/data/2.5/weather?lat=26.9298&lon=-82.0454&appid=fdc168625df716de0f81572b81cbcede&units=imperial";
+// const char* ssid = "CenturyLink0C01";
+// const char* password = "6442bcace3bf98";
+const char* ssid = "";
+const char* password = "Happyfarm24";
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 
@@ -44,25 +47,34 @@ void loop() {
   int currentHour = timeClient.getHours();
   Serial.println(currentHour);
 
-  if (currentHour >= 8 && currentHour <= 17){
+  if (currentHour >= 0 && currentHour <= 23){
       // read analog value
     int rawValue = analogRead(A0);
+
     // map value to percentage
     int percentage = map(rawValue, wet, dry, 100, 0);
-    // send Soil Data to Google Chat
-    sendSoilDatatToGoogleChat(percentage);
-    // send Rain and Wind Data to Google Chat
-    float windData = getWindSpeedFromAPI();
-    sendWindDataToGoogleChat(windData);
-    float rainData = getRainDataFromAPI();
-    sendRainDataToGoogleChat(rainData);
-    
+
     //  print out value and percentage
     Serial.print(rawValue);
     Serial.println(" - Raw Value");
     Serial.print(percentage);
     Serial.println("%");
-    
+
+    // send Soil Data to Google Chat
+    sendSoilDatatToGoogleChat(percentage);
+
+    // send Wind Data to Google Chat
+    float windData = getWindSpeedFromAPI();
+    if (windData > 10.0){
+      sendWindDataToGoogleChatWithConditions(windData);
+    } 
+    else {
+      sendWindDataToGoogleChatNoConditions(windData);
+    }
+
+    // send Rain Data to Google Chat
+    float rainData = getRainDataFromAPI();
+    sendRainDataToGoogleChat(rainData);
 
   }
   // delay 3 hours
@@ -126,7 +138,14 @@ void sendRainDataToGoogleChat(float rainData) {
   http.begin(client, webhookUrl);
   http.addHeader("Content-Type", "application/json");
 
-  String message = "{\"text\": \"Rain amount in last three hours is " + String(rainData) + " mm\"}";
+  String message = "";
+
+  if (rainData > 0.0){
+    message = "{\"text\": \"Rain amount in last three hours is " + String(rainData) + " mm\"}";
+  } else {
+    message = "{\"text\": \"There was no rain in the last three hours.\"}";
+  }
+  
   http.POST(message);
 
   Serial.println("Rain data sent.");
@@ -142,15 +161,52 @@ void sendRainDataToGoogleChat(float rainData) {
   http.end();
 }
 
-void sendWindDataToGoogleChat(float windData){
+void sendWindDataToGoogleChatWithConditions(float windData){
   HTTPClient http;
   WiFiClientSecure client;
   client.setInsecure();
   http.begin(client, webhookUrl);
   http.addHeader("Content-Type", "application/json");
 
-  String message = "{\"text\": \"Wind speed is " + String(windData) + " meter/sec\"}";
+  String message = "";
 
+  if (windData > 10.0 && windData <= 20.0){
+    message = "{\"text\": \"Wind speed is more than 10 miles/hour\"}";
+  } else if (windData > 20.0 && windData <= 30.0){
+    message = "{\"text\": \"Wind speed is more than 20 miles/hour\"}";
+  } else if (windData > 30.0 && windData <= 40.0){
+    message = "{\"text\": \"Wind speed is more than 30 miles/hour\"}";
+  } else if (windData > 40.0 && windData <= 50.0){
+    message = "{\"text\": \"Wind speed is more than 40 miles/hour\"}";
+  } else if (windData > 50.0){
+    message = "{\"text\": \"Wind speed is more than 50 miles/hour\"}";
+  } else {
+    message = "{\"text\": \"There is no wind right now.\"}";
+  }
+  
+  http.POST(message);
+  Serial.println("Wind data sent.");
+  Serial.println(message);
+
+  while (client.connected()){
+    if (client.available()) {
+      String line = client.readStringUntil('\r');
+      Serial.println(line);
+    }
+  }
+
+  http.end();
+}
+
+void sendWindDataToGoogleChatNoConditions(float windData){
+  HTTPClient http;
+  WiFiClientSecure client;
+  client.setInsecure();
+  http.begin(client, webhookUrl);
+  http.addHeader("Content-Type", "application/json");
+
+  String message = "{\"text\": \"Current wind speed is " + String(windData) + " miles/hour\"}";
+  
   http.POST(message);
   Serial.println("Wind data sent.");
   Serial.println(message);
@@ -168,7 +224,7 @@ void sendWindDataToGoogleChat(float windData){
 float getRainDataFromAPI() {
   HTTPClient http;
   WiFiClient client;
-  http.begin(client, weatherApiUrl);
+  http.begin(client, forecastApiUrl);
   int httpCode = http.GET();
 
   if (httpCode > 0) {
@@ -209,11 +265,11 @@ float getWindSpeedFromAPI() {
     DynamicJsonDocument doc(1024);
     deserializeJson(doc, payload);
 
-    JsonArray fiveDaysData = doc["list"].as<JsonArray>();
-    JsonObject todayData = fiveDaysData[0].as<JsonObject>();
+    // JsonArray fiveDaysData = doc["list"].as<JsonArray>();
+    // JsonObject todayData = fiveDaysData[0].as<JsonObject>();
 
-    if (todayData.containsKey("wind")){
-      float windSpeed = todayData["wind"]["speed"];
+    if (doc.containsKey("wind")){
+      float windSpeed = doc["wind"]["speed"];
       return windSpeed;
     } else {
       Serial.println("No wind data found.");
