@@ -10,10 +10,12 @@ const char* webhookUrl = "https://chat.googleapis.com/v1/spaces/AAAA-rlSoZ4/mess
 const char* test_webhookUrl = "https://chat.googleapis.com/v1/spaces/AAAA0XqLY3c/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=Vuxxm21ZhPYxhXvPD8SkYSTkLnK74sbcXqqGNo-NJPs";
 const char* forecastApiUrl = "http://api.openweathermap.org/data/2.5/forecast?lat=26.9298&lon=-82.0454&appid=fdc168625df716de0f81572b81cbcede&units=imperial"; // Punta Gorda's Geo coords are [26.9298, -82.0454], lat=26.9298&lon=-82.0454
 const char* weatherApiUrl = "http://api.openweathermap.org/data/2.5/weather?lat=26.9298&lon=-82.0454&appid=fdc168625df716de0f81572b81cbcede&units=imperial";
-// const char* ssid = "TP-Link_AP_0F44";
-// const char* password = "Happyfarm24";
-const char* ssid = "CenturyLink0C01";
-const char* password = "6442bcace3bf98";
+// const char* ssid = "iPhone";
+// const char* password = "justdoit!";
+const char* ssid = "TP-Link_AP_0F44";
+const char* password = "Happyfarm24";
+// const char* ssid = "CenturyLink0C01";
+// const char* password = "6442bcace3bf98";
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 unsigned long lastExecutionTime = 0;
@@ -87,7 +89,7 @@ void sendDataToGoogleChat(int value, float windData, float rainData){
   HTTPClient http;
   WiFiClientSecure client;
   client.setInsecure();
-  http.begin(client, test_webhookUrl);
+  http.begin(client, webhookUrl);
   // add http header
   http.addHeader("Content-Type", "application/json");
   
