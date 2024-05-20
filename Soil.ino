@@ -10,8 +10,6 @@ const char* webhookUrl = "https://chat.googleapis.com/v1/spaces/AAAA-rlSoZ4/mess
 const char* test_webhookUrl = "https://chat.googleapis.com/v1/spaces/AAAA0XqLY3c/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=Vuxxm21ZhPYxhXvPD8SkYSTkLnK74sbcXqqGNo-NJPs";
 const char* forecastApiUrl = "http://api.openweathermap.org/data/2.5/forecast?lat=26.9298&lon=-82.0454&appid=fdc168625df716de0f81572b81cbcede&units=imperial"; // Punta Gorda's Geo coords are [26.9298, -82.0454], lat=26.9298&lon=-82.0454
 const char* weatherApiUrl = "http://api.openweathermap.org/data/2.5/weather?lat=26.9298&lon=-82.0454&appid=fdc168625df716de0f81572b81cbcede&units=imperial";
-// const char* ssid = "iPhone";
-// const char* password = "justdoit!";
 const char* ssid = "TP-Link_AP_0F44";
 const char* password = "Happyfarm24";
 // const char* ssid = "CenturyLink0C01";
@@ -19,7 +17,7 @@ const char* password = "Happyfarm24";
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 unsigned long lastExecutionTime = 0;
-const unsigned long interval = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
+const unsigned long interval = 60000; // 3 hours in milliseconds 3 * 60 * 60 * 1000
 
 void setup() {
   // put your setup code here, to run once:
@@ -64,12 +62,7 @@ void loop() {
 
       // map value to percentage
       int percentage = map(rawValue, wet, dry, 100, 0);
-
-      //  print out value and percentage
-      Serial.print(rawValue);
-      Serial.println(" - Raw Value");
-      Serial.print(percentage);
-      Serial.println("%");
+      Serial.println("Raw Value: " + String(rawValue) + ", Percentage: " + String(percentage) + "%"); 
       
       // Fetch data from Weather API
       float windData = getWindSpeedFromAPI();
@@ -79,6 +72,7 @@ void loop() {
       sendDataToGoogleChat(percentage, windData, rainData);
     } 
   }
+  
   // delay 120 seconds
   delay(120000);
 
@@ -112,27 +106,15 @@ void sendDataToGoogleChat(int value, float windData, float rainData){
     message = "{\"text\": \"Soil moisture sensor: The water depth is less than half an inch.\n";
   }
 
-  // append Wind data to message
-  if (windData > 10.0 && windData <= 20.0){
-    message = message + "Wind speed is more than 10 miles/hour.\n";
-  } else if (windData > 20.0 && windData <= 30.0){
-    message = message + "Wind speed is more than 20 miles/hour.\n";
-  } else if (windData > 30.0 && windData <= 40.0){
-    message = message + "Wind speed is more than 30 miles/hour.\n";
-  } else if (windData > 40.0 && windData <= 50.0){
-    message = message + "Wind speed is more than 40 miles/hour.\n";
-  } else if (windData > 50.0){
-    message = message + "Wind speed is more than 50 miles/hour.\n";
-  } else {
-    message = message + "Current wind speed is " + String(windData) + " miles/hour.\n";
-  }
+  String windMessage = (windData > 10.0) 
+                    ? "Wind speed is more than " + String(int(windData / 10) * 10) + " miles/hour.\n" 
+                    : "Current wind speed is " + String(windData) + " miles/hour.\n";
 
-  // append Rain data to message
-  if (rainData > 0.0){
-    message = message + "Rain amount in last three hours is " + String(rainData) + " mm\"}";
-  } else {
-    message = message + "There was no rain in the last three hours.\"}";
-  }
+  String rainMessage = (rainData > 0.0)
+                      ? "Rain amount in last three hours is " + String(rainData) + " mm" 
+                      : "There was no rain in the last three hours.";
+
+  message = message + windMessage + rainMessage + "\"}"; // Concatenate and close JSON
 
   // send json message to webhookUrl
   http.POST(message);
@@ -197,9 +179,6 @@ float getWindSpeedFromAPI() {
     String payload = http.getString();
     DynamicJsonDocument doc(1024);
     deserializeJson(doc, payload);
-
-    // JsonArray fiveDaysData = doc["list"].as<JsonArray>();
-    // JsonObject todayData = fiveDaysData[0].as<JsonObject>();
 
     if (doc.containsKey("wind")){
       float windSpeed = doc["wind"]["speed"];
