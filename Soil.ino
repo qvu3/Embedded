@@ -17,7 +17,7 @@ const char* password = "Happyfarm24";
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
 unsigned long lastExecutionTime = 0;
-const unsigned long interval = 60000; // 3 hours in milliseconds 3 * 60 * 60 * 1000
+const unsigned long interval = 3 * 60 * 60 * 1000; // 3 hours in milliseconds 
 
 void setup() {
   // put your setup code here, to run once:
